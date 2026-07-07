@@ -614,16 +614,26 @@ function clearAllLogs() {
 
 function exportLogs() {
     if (logsData.length === 0) return showToast("Log masih kosong!", "error");
-    // Field log: "pir" dan "play_sound" (sesuai struktur yang dikirim ESP32)
-    let csv = "data:text/csv;charset=utf-8,No,Waktu,PIR,Speaker,Keterangan\n";
-    logsData.forEach((l, i) => csv += `${i + 1},${l.waktu},${l.pir ? 'PIR' : 'AMAN'},${l.play_sound ? 'ON' : 'OFF'},"${l.ket}"\n`);
+    // "sep=," memaksa Excel membaca koma sebagai pemisah kolom (regional ID
+    // biasanya default ke titik koma), dan BOM (\uFEFF) menjaga karakter
+    // tampil dengan benar. Pakai Blob + object URL (bukan data URI +
+    // encodeURI) karena lebih stabil untuk data yang panjang.
+    let csv = "sep=,\r\nNo,Waktu,PIR,Speaker,Keterangan\r\n";
+    logsData.forEach((l, i) => {
+        csv += `${i + 1},${l.waktu},${l.pir ? 'PIR' : 'AMAN'},${l.play_sound ? 'ON' : 'OFF'},"${l.ket}"\r\n`;
+    });
+
+    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
 
     const link = document.createElement("a");
-    link.setAttribute("href", encodeURI(csv));
+    link.setAttribute("href", url);
     link.setAttribute("download", `monkeyguard_logs_${Date.now()}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
     showToast("CSV Berhasil diunduh!", "success");
 }
 
